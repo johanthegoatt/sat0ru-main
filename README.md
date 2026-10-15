@@ -26,6 +26,8 @@ SAT0RU is a cursed technique visualizer inspired by Jujutsu Kaisen. It combines 
 - ML model classifies from landmark sequences (no direct rule-threshold gesture mapping in normal mode).
 - Temporal voting + hold-to-neutral state machine prevents abrupt loss behavior.
 - Automatic fallback to legacy heuristic detection if model load/inference fails.
+- Hands are put into the model's left and right slots by MediaPipe's handedness label. When both hands get the same label (it happens when they cross or overlap), the more confident one keeps its side and the other takes the free slot, so a two-hand technique still reaches the model as two hands.
+- The fallback detector reads a finger as straight when its tip is further from the wrist than its middle joint (plus 12% of palm length), so gestures hold up with the hand tilted or sideways. It used to compare screen heights, which only worked for an upright hand.
 
 ### Dev Capture Mode
 
@@ -162,6 +164,8 @@ Example payload:
 cd SAT0RU-main
 npm test
 ```
+
+The gesture tests build synthetic hands, rotate them, and check each sign still reads the same. CI runs the tests on Node 20, 22 and 24.
 
 ## Notes
 
