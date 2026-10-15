@@ -22,7 +22,12 @@ function normalizeHandLandmarks(landmarks) {
   return out;
 }
 
-function assignHandsBySide(results) {
+// MediaPipe sometimes labels both hands the same side, most often when they
+// cross or overlap. The old code kept the first and silently dropped the
+// second, so a two-hand technique was fed to the model as one hand. Now the
+// hand with the more confident label keeps its side and the other takes the
+// free slot.
+export function assignHandsBySide(results) {
   const assignments = {
     left: null,
     right: null
@@ -31,11 +36,22 @@ function assignHandsBySide(results) {
   const landmarks = results.multiHandLandmarks || [];
   const handedness = results.multiHandedness || [];
 
-  for (let i = 0; i < landmarks.length; i += 1) {
+  const hands = landmarks.map((points, i) => {
     const label = handedness[i]?.label?.toLowerCase() || "unknown";
-    const side = label.includes("left") ? "left" : "right";
-    if (!assignments[side]) {
-      assignments[side] = landmarks[i];
+    return {
+      points,
+      side: label.includes("left") ? "left" : "right",
+      score: Number.isFinite(handedness[i]?.score) ? handedness[i].score : 0
+    };
+  });
+  hands.sort((a, b) => b.score - a.score);
+
+  for (const hand of hands) {
+    if (!assignments[hand.side]) {
+      assignments[hand.side] = hand.points;
+    } else {
+      const other = hand.side === "left" ? "right" : "left";
+      if (!assignments[other]) assignments[other] = hand.points;
     }
   }
 

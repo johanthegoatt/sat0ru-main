@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { extractFrameFeatures, getFeatureDimensions } from "../src/vision/featureExtractor.js";
+import { assignHandsBySide, extractFrameFeatures, getFeatureDimensions } from "../src/vision/featureExtractor.js";
 
 function buildHand(offsetX, offsetY, offsetZ = 0) {
   const points = [];
@@ -48,4 +48,34 @@ test("feature extractor is translation-invariant after wrist centering", () => {
   for (let i = 0; i < a.vector.length; i += 1) {
     assert.ok(Math.abs(a.vector[i] - b.vector[i]) < 1e-6);
   }
+});
+
+test("two hands both labelled Left keep both hands, not one", () => {
+  const dims = getFeatureDimensions();
+  const a = buildHand(0.1, 0.2);
+  const b = buildHand(0.5, 0.3);
+  const frame = extractFrameFeatures({
+    multiHandLandmarks: [a, b],
+    multiHandedness: [{ label: "Left", score: 0.62 }, { label: "Left", score: 0.97 }]
+  });
+  assert.equal(frame.handCount, 2);
+  // The surer hand (b) keeps the left slot, a moves to the right slot.
+  const slots = assignHandsBySide({
+    multiHandLandmarks: [a, b],
+    multiHandedness: [{ label: "Left", score: 0.62 }, { label: "Left", score: 0.97 }]
+  });
+  assert.equal(slots.left, b);
+  assert.equal(slots.right, a);
+  assert.ok(frame.vector.slice(dims.handFeatureSize).some((v) => v !== 0), "right slot is filled");
+});
+
+test("normal Left and Right labels are unchanged", () => {
+  const a = buildHand(0.1, 0.2);
+  const b = buildHand(0.5, 0.3);
+  const slots = assignHandsBySide({
+    multiHandLandmarks: [a, b],
+    multiHandedness: [{ label: "Right", score: 0.9 }, { label: "Left", score: 0.8 }]
+  });
+  assert.equal(slots.right, a);
+  assert.equal(slots.left, b);
 });
