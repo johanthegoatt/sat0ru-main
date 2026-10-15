@@ -47,7 +47,8 @@ export function createHandsController({
   });
 
   const hands = new window.Hands({
-    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    // Same version as the hands.js script tag: the wasm and model files must match it.
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
   });
 
   hands.setOptions(HANDS_CONFIG);
