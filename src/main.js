@@ -349,7 +349,8 @@ let fpsTick = performance.now();
 
 function animate(now) {
   animationHandle = requestAnimationFrame(animate);
-  scene.renderFrame(now - lastTime);
+  // rAF stops in a background tab; clamp the step so particles don't leap on return.
+  scene.renderFrame(Math.min(now - lastTime, 100));
   lastTime = now;
 
   fpsFrames += 1;
@@ -362,8 +363,26 @@ function animate(now) {
   }
 }
 
+// Hand the camera back while the tab is hidden: tracking can't run there
+// anyway (rAF pauses), and the camera light stays on otherwise. It restarts
+// on the same device when the tab comes back.
+let resumeOnShow = false;
+function handleVisibility() {
+  if (document.hidden) {
+    resumeOnShow = store.getState().running;
+    if (resumeOnShow) {
+      stop();
+      status.set("idle", "Camera paused while this tab is in the background.");
+    }
+  } else if (resumeOnShow) {
+    resumeOnShow = false;
+    start(store.getState().selectedCameraId);
+  }
+}
+
 function bindWindowEvents() {
   window.addEventListener("resize", scene.resize);
+  document.addEventListener("visibilitychange", handleVisibility);
   window.addEventListener("beforeunload", () => {
     stop();
     if (animationHandle) cancelAnimationFrame(animationHandle);
